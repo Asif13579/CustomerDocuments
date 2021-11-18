@@ -1,0 +1,45 @@
+import pandas as pd
+import requests
+import os
+import base64
+from datetime import datetime
+
+current_date=datetime.today().strftime('%d%m%Y')
+df=pd.read_excel('C:\Automation\CustomerDocuments\CustomerList.xlsx')
+download_folder=os.path.join('C:\CustomerDump', current_date)
+headers = {'Authorization': 'Basic Y2FtMDFAbG90cy5jb206Y3B3aUAxMjM0NQ=='}
+
+CHECK_FOLDER = os.path.isdir(download_folder)
+if not CHECK_FOLDER:
+    # print("created folder : ", path)
+    os.mkdir(download_folder)
+
+for i, row in df[ (df['CUSTOMER_ID'] !='') ].iterrows():
+    CustID=str(int(row['CUSTOMER_ID']))
+    CardNumber=str(row['CARD_NUMBER'])
+    print("Iteration : "+str(i))
+    #print("CustID : "+str(CustID))
+    print("CardNumber : "+str(CardNumber))
+
+    URL = "https://lots.capillarytech.com/makro/v1/customers/"+str(CustID)
+    r = requests.get(url = URL, headers = headers)
+    data = r.json()
+    i=i+1
+
+    documents=data.get("customers")[0].get("documents")
+    for doc in documents:
+        URL = "https://lots.capillarytech.com/makro/v1/customers/"+str(CustID)+"/download?docId="+str(doc.get("id"))
+        r = requests.get(url = URL, headers = headers)
+        docdata = r.json()
+        fileName=docdata.get("customers")[0].get("documents")[0].get("fileName")
+        fileData=docdata.get("customers")[0].get("documents")[0].get("fileData")
+	
+        path = os.path.join(download_folder, CardNumber)
+        CHECK_FOLDER = os.path.isdir(path)
+        if not CHECK_FOLDER:
+            # print("created folder : ", path)
+            os.mkdir(path)
+        local_path = os.path.join(path, CardNumber+'_'+fileName)
+        f = open(local_path, "wb")
+        f.write(base64.b64decode(bytes(fileData,'ascii')))
+        f.close()
